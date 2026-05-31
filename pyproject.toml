@@ -1,0 +1,15 @@
+[project]
+name = "dados-abertos-receita"
+version = "0.1.0"
+description = "Projeto de ingestão e processamento de dados públicos da Receita Federal."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fake-useragent>=2.2.0",
+    "httpx>=0.28.1",
+    "polars>=1.40.1",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
