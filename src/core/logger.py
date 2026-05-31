@@ -1,19 +1,22 @@
-import logging
+import sys
 
+from loguru import logger
 from src.core.paths import LOGS_DIR
 
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
-logger = logging.getLogger("dados_abertos_receita")
-logger.setLevel(logging.INFO)
-logger.propagate = False
-
-formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
-
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
-
-file_handler = logging.FileHandler(LOGS_DIR / "app.log", encoding="utf-8")
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+logger.remove()
+logger.add(
+    sys.stderr,
+    format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {name} | {message}",
+    level="INFO",
+    colorize=False,
+)
+logger.add(
+    str(LOGS_DIR / "app.log"),
+    rotation="10 MB",
+    retention="10 days",
+    encoding="utf-8",
+    format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | {name} | {message}",
+    level="INFO",
+)

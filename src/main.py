@@ -1,3 +1,4 @@
+from src.core.logger import logger
 from src.core.paths import (
     RAW_DIR,
     EXTRACTED_DIR,
@@ -10,6 +11,7 @@ from src.services.monthly_service import MonthlyPipeline
 
 
 def main() -> None:
+    logger.info("Iniciando execução principal")
     assegura_criacao_diretorios()
 
     service = DadosAbertosService()
@@ -22,8 +24,8 @@ def main() -> None:
     sucesso = service.baixar_bases(links_bases, raw_dir=raw_dir)
     if not sucesso:
         raise RuntimeError("Não foi possível concluir o download das bases.")
-''
-    print(f"Download das bases para {data_base} concluído com sucesso.")
+
+    logger.info("Download das bases para %s concluído com sucesso.", data_base)
 
     extracted_dir = EXTRACTED_DIR / data_base
     converted_dir = CONVERTED_DIR / data_base
@@ -37,8 +39,12 @@ def main() -> None:
     )
     pipeline.run()
 
-    print(f"Pipeline mensal para {data_base} concluído com sucesso.")
+    logger.info("Pipeline mensal para %s concluído com sucesso.", data_base)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        logger.exception("Falha na execução do pipeline")
+        raise
