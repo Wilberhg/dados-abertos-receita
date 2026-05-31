@@ -4,6 +4,8 @@ from src.core.logger import logger
 from src.infra.files.file_discovery import arquivos_pendentes
 from src.infra.files.parquet_converter import CsvToParquetConverter
 from src.infra.files.zip_extractor import ZipExtractor
+from src.models.execution_log import ExecutionLog, StageType
+from src.services.execution_log_service import ExecutionLogService
 
 
 class MonthlyPipeline:
@@ -15,12 +17,14 @@ class MonthlyPipeline:
         converted_dir: Path,
         extractor: ZipExtractor | None = None,
         converter: CsvToParquetConverter | None = None,
+        execution_log_service: ExecutionLogService | None = None,
     ):
         self.raw_dir = raw_dir
         self.extracted_dir = extracted_dir
         self.converted_dir = converted_dir
         self.extractor = extractor or ZipExtractor()
         self.converter = converter or CsvToParquetConverter()
+        self.execution_log_service = execution_log_service or ExecutionLogService()
 
     def run(self) -> None:
         logger.info(
@@ -38,8 +42,40 @@ class MonthlyPipeline:
         pending = arquivos_pendentes(zip_files, csv_files)
 
         logger.info("Extraindo %s arquivos ZIP pendentes", len(pending))
-        for source_file in pending:
-            self.extractor.process(source_file, self.extracted_dir)
+
+        log = ExecutionLog.create_started(StageType.EXTRACT_ZIPS.value)
+        log_id = self.execution_log_service.repository.save(log)
+        log = ExecutionLog(
+            id=log_id,
+            stage_type=log.stage_type,
+            status=log.status,
+            started_at=log.started_at,
+        )
+
+        log = ExecutionLog.create_started(StageType.CONVERT_CSVS.value)
+        log_id = self.execution_log_service.repository.save(log)
+        log = ExecutionLog(
+            id=log_id,
+            stage_type=log.stage_type,
+            status=log.status,
+            started_at=log.started_at,
+        )
+
+        try:
+            for source_file in pending:
+                self.converter.process(source_file, self.converted_dir)
+            self.execution_log_service.log_success(log, items_processed=len(pending))
+        except Exception as e:
+            error_log = log.mark_failure(str(e))
+            self.execution_log_service.repository.save(error_log)
+            raise
+            for source_file in pending:
+                self.extractor.process(source_file, self.extracted_dir)
+            self.execution_log_service.log_success(log, items_processed=len(pending))
+        except Exception as e:
+            error_log = log.mark_failure(str(e))
+            self.execution_log_service.repository.save(error_log)
+            raise
 
     def convert_csvs(self) -> None:
         csv_files = list(self.extracted_dir.rglob("*.csv"))
